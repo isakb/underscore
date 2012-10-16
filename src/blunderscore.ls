@@ -151,8 +151,7 @@ _.contains = _.include = (obj, target) ->
   )
   found
 
-_.invoke = (obj, method) ->
-  args = slice.call(arguments, 2)
+_.invoke = (obj, method, ...args) ->
   _.map obj, (value) ->
     (if _.isFunction(method) then method else value[method]).apply value, args
 
@@ -201,8 +200,8 @@ _.shuffle = (obj) ->
   rand = undefined
   index = 0
   shuffled = []
-  each obj, (value) ->
-    rand := _.random(index++)
+  for key, value of obj
+    rand = _.random(index++)
     shuffled[index - 1] = shuffled[rand]
     shuffled[rand] = value
 
@@ -229,7 +228,7 @@ _.sortBy = (obj, value, context) ->
 group = (obj, value, context, behavior) ->
   result = {}
   iterator = lookupIterator(value)
-  each obj, (value, index) ->
+  for index, value of obj
     key = iterator.call(context, value, index, obj)
     behavior result, key, value
 
@@ -288,7 +287,7 @@ _.compact = (array) ->
 
 
 flatten = (input, shallow, output) ->
-  each input, (value) ->
+  for key, value of input
     if _.isArray(value)
       (if shallow then push.apply(output, value) else flatten(value, shallow, output))
     else
@@ -299,14 +298,14 @@ flatten = (input, shallow, output) ->
 _.flatten = (array, shallow) ->
   flatten array, shallow, []
 
-_.without = (array) ->
-  _.difference array, slice.call(arguments, 1)
+_.without = (array, ...args) ->
+  _.difference array, args
 
 _.uniq = _.unique = (array, isSorted, iterator, context) ->
   initial = (if iterator then _.map(array, iterator, context) else array)
   results = []
   seen = []
-  each initial, (value, index) ->
+  for index, value of initial
     if (if isSorted then (not index or seen[seen.length - 1] isnt value) else not _.contains(seen, value))
       seen.push value
       results.push array[index]
@@ -316,8 +315,7 @@ _.uniq = _.unique = (array, isSorted, iterator, context) ->
 _.union = ->
   _.uniq concat.apply(ArrayProto, arguments)
 
-_.intersection = (array) ->
-  rest = slice.call(arguments, 1)
+_.intersection = (array, ...rest) ->
   _.filter _.uniq(array), (item) ->
     _.every rest, (other) ->
       _.indexOf(other, item) >= 0
@@ -330,8 +328,7 @@ _.difference = (array) ->
     not _.contains(rest, value)
 
 
-_.zip = ->
-  args = slice.call(arguments)
+_.zip = (...args) ->
   length = _.max(_.pluck(args, "length"))
   results = new Array(length)
   for i from 0 til length
@@ -394,17 +391,17 @@ _.bind = bind = (func, context) ->
   return nativeBind.apply(func, slice.call(arguments, 1))  if func.bind is nativeBind and nativeBind
   throw new TypeError  unless _.isFunction(func)
   args = slice.call(arguments, 2)
-  bound = ->
-    return func.apply(context, args.concat(slice.call(arguments)))  unless this instanceof bound
+  bound = (...args)->
+    return func.apply(context, args.concat(args))  unless this instanceof bound
     ctor:: = func::
     self = new ctor
-    result = func.apply(self, args.concat(slice.call(arguments)))
+    result = func.apply(self, args.concat(args))
     return result  if Object(result) is result
     self
 
 _.bindAll = (obj, ...funcs) ->
   funcs = _.functions(obj)  if funcs.length is 0
-  each funcs, (f) ->
+  for f in funcs
     obj[f] = _.bind(obj[f], obj)
 
   obj
@@ -416,14 +413,13 @@ _.memoize = (func, hasher) ->
     key = hasher.apply(this, arguments)
     if _.has(memo, key) then memo[key] else (memo[key] = func.apply(this, arguments))
 
-_.delay = (func, wait) ->
-  args = slice.call(arguments, 2)
+_.delay = (func, wait, ...args) ->
   setTimeout (->
     func.apply null, args
   ), wait
 
-_.defer = (func) ->
-  _.delay.apply blunderscore, [func, 1].concat(slice.call(arguments, 1))
+_.defer = (func, ...args) ->
+  _.delay.apply blunderscore, [func, 1, ...args]
 
 _.throttle = (func, wait) ->
   context = undefined
@@ -524,30 +520,30 @@ _.functions = _.methods = (obj) ->
     names.push key  if _.isFunction(obj[key])
   names.sort()
 
-_.extend = (obj) ->
-  each slice.call(arguments, 1), (source) ->
+_.extend = (obj, ...extensions) ->
+  for source in extensions
     for prop of source
       obj[prop] = source[prop]
 
   obj
 
-_.pick = (obj) ->
+_.pick = (obj, ...args) ->
   copy = {}
-  keys = concat.apply(ArrayProto, slice.call(arguments, 1))
-  each keys, (key) ->
+  keys = concat.apply(ArrayProto, args)
+  for key in keys
     copy[key] = obj[key]  if key of obj
 
   copy
 
-_.omit = (obj) ->
+_.omit = (obj, ...args) ->
   copy = {}
-  keys = concat.apply(ArrayProto, slice.call(arguments, 1))
+  keys = concat.apply(ArrayProto, args)
   for key of obj
     copy[key] = obj[key]  unless _.contains(keys, key)
   copy
 
-_.defaults = (obj) ->
-  each slice.call(arguments, 1), (source) ->
+_.defaults = (obj, ...objects) ->
+  for source in objects
     for prop of source
       obj[prop] = source[prop]  unless obj[prop]?
 
